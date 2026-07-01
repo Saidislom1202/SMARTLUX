@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS cargos (
   driver_tax BOOLEAN DEFAULT FALSE,
   worker_pay NUMERIC(14,2) DEFAULT 0,
   profit NUMERIC(14,2) DEFAULT 0,
+  status VARCHAR(20) DEFAULT 'wait',
   karta VARCHAR(30),
   karta_ega VARCHAR(150),
   pickup_date DATE,

@@ -2,7 +2,14 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 
+const pool = require('./config/db');
 const { authMiddleware } = require('./middleware/auth');
+
+// Eski bazalarda cargos.status ustuni bo'lmasligi mumkin (masalan status har doim
+// "Bekor" bo'lib ko'rinardi) — mavjud bo'lmasa xavfsiz ravishda qo'shib qo'yamiz.
+pool.query("ALTER TABLE cargos ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'wait'")
+  .then(() => pool.query("UPDATE cargos SET status='wait' WHERE status IS NULL"))
+  .catch(err => console.error('cargos.status ustunini qo\'shishda xatolik:', err));
 
 const authRoutes = require('./routes/auth');
 const driversRoutes = require('./routes/drivers');
