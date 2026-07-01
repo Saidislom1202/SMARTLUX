@@ -37,24 +37,36 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// RO'YXATDAN O'TISH (yangi xodim qo'shish — hozircha ochiq, keyin admin-only qilinadi)
-router.post('/register', async (req, res) => {
-  const { login, password, full_name } = req.body;
-  if (!login || !password) {
-    return res.status(400).json({ error: 'Login va parol kerak' });
+// Joriy foydalanuvchi ma'lumoti
+router.get('/me', authMiddleware, async (req, res) => {
+  res.json({ user: req.user });
+});
+
+// Joriy foydalanuvchi login/parolini o'zgartirish (ochiq ro'yxatdan o'tish o'rniga)
+router.put('/me', authMiddleware, async (req, res) => {
+  const { login, password } = req.body;
+  if (!login && !password) {
+    return res.status(400).json({ error: 'Yangilanadigan maydon yo\'q' });
   }
-  if (password.length < 6) {
+  if (password && password.length < 6) {
     return res.status(400).json({ error: 'Parol kamida 6 ta belgidan iborat bo\'lishi kerak' });
   }
   try {
-    const exists = await pool.query('SELECT id FROM users WHERE login = $1', [login]);
-    if (exists.rows.length > 0) {
-      return res.status(409).json({ error: 'Bu login band, boshqasini tanlang' });
+    if (login) {
+      const exists = await pool.query('SELECT id FROM users WHERE login = $1 AND id != $2', [login, req.user.id]);
+      if (exists.rows.length > 0) {
+        return res.status(409).json({ error: 'Bu login band, boshqasini tanlang' });
+      }
     }
-    const hash = await bcrypt.hash(password, 10);
+    const fields = [];
+    const values = [];
+    let i = 1;
+    if (login) { fields.push(`login = $${i++}`); values.push(login); }
+    if (password) { fields.push(`password_hash = $${i++}`); values.push(await bcrypt.hash(password, 10)); }
+    values.push(req.user.id);
     const result = await pool.query(
-      'INSERT INTO users (login, password_hash, full_name, role) VALUES ($1,$2,$3,$4) RETURNING id, login, full_name, role',
-      [login, hash, full_name || login, 'staff']
+      `UPDATE users SET ${fields.join(', ')} WHERE id = $${i} RETURNING id, login, full_name, role`,
+      values
     );
     const user = result.rows[0];
     const token = jwt.sign(
@@ -67,11 +79,6 @@ router.post('/register', async (req, res) => {
     console.error(err);
     res.status(500).json({ error: 'Server xatosi' });
   }
-});
-
-// Joriy foydalanuvchi ma'lumoti
-router.get('/me', authMiddleware, async (req, res) => {
-  res.json({ user: req.user });
 });
 
 module.exports = router;

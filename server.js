@@ -24,7 +24,7 @@ app.get('/', (req, res) => {
 });
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
-// Auth route — login/register ochiq (token kerak emas)
+// Auth route — login ochiq (token kerak emas), /me esa token talab qiladi
 app.use('/api/auth', authRoutes);
 
 // Qolgan barcha route'lar — token talab qiladi
